@@ -23,26 +23,28 @@ This can be done in one of two ways
 
 # Interactive Mode:
   By defaulut the script will run in interactive mode and prompt for input
-    case number
-    email
-    TSM username and password
+    - case number
+    - email
+    - TSM username and password
 
 # Non-interactive Mode:
   If you would like to schedule the script to run without user input, there are some variables that can be set near the top of the script.
   Find these lines and uncomment them by removing the "::"
+  '''
   	::SET "silent=Y"
-		::SET "case=12345678"
-		::SET "email=name@domain.com"
-		::SET "user=username"
-		::SET password="Your not so secret password."
+	::SET "case=12345678"
+	::SET "email=name@domain.com"
+	::SET "user=username"
+	::SET password="Your not so secret password."
+  '''
  
   This must be uncommented in order for the script to run in non-interactive mode
-      SET "silent=Y"
+  	SET "silent=Y"
   
   These must be uncommented and correct information entered to allow for the automatic upload of the output file
-      SET "case=12345678"
-      SET "email=name@domain.com"
+  	SET "case=12345678"
+  	SET "email=name@domain.com"
 		
   Tableau Server version 2019.2 and earlier require you to login to TSM. Enter a valid username and password for a user who is a TSM admin. Tableau Server 2019.3 or later does not require this.
- 		SET "user=username"
-		SET password="Your not so secret password."
+ 	SET "user=username"
+	SET password="Your not so secret password."
