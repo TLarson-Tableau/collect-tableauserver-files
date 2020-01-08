@@ -176,6 +176,12 @@ EXIT /B 0
 			IF NOT DEFINED user (SET /P "user=username: ")
 			ECHO Logging in to TSM as !user!
 			ECHO.
+			
+			IF DEFINED password (
+				%comspec% /c tsm login -u !user! -p %password%
+			) ELSE (
+				%comspec% /c tsm login -u !user!
+			)
 
 			%comspec% /c tsm login -u !user! -p %password%
 
