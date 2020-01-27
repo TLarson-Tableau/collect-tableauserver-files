@@ -1,7 +1,6 @@
-The main script is [collect-tsfiles.bat](https://github.com/TLarson-Tableau/collect-tableauserver-files/blob/master/collect-tsfiles.bat), this will create a pg-only backup of Tableau Server as workgroup.tsbak. It will then create a staging directory in %temp%\staging to copy the workgroup.yml and System Info (NFO) files. Workgroup.tsbak is renamed to workgroup.zip and then the staged files will be packaged up in workgroup.zip. If Tableau Server can create an outbound connection to https://report-issue.tableau.com/ and a case number is provided to the script, then workgroup.zip will be automatically uploaded to the Tableau Technical Support Case.
+# collect-tsfiles.bat
 
-Putty SFTP (psftp.exe) is included should you decide to use it for uploading to egnyte.
-Putty License: https://www.chiark.greenend.org.uk/~sgtatham/putty/licence.html
+[collect-tsfiles.bat](https://github.com/TLarson-Tableau/collect-tableauserver-files/blob/master/collect-tsfiles.bat) will create a pg-only backup of Tableau Server as workgroup.tsbak. It will then create a staging directory in %temp%\staging to copy the workgroup.yml and System Info (NFO) files. Workgroup.tsbak is renamed to workgroup.zip and then the staged files will be packaged up in workgroup.zip. If Tableau Server can create an outbound connection to https://report-issue.tableau.com/ and a case number is provided to the script, then workgroup.zip will be automatically uploaded to the Tableau Technical Support Case.
 
 ## Prerequisites:
 - Windows Server
