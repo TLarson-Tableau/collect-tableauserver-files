@@ -12,10 +12,13 @@
 ```
 collect-tsfiles.bat [nopg] [noupload]
 ```
+<dl>
+ <dt><b>nopg</b></dt>
+ <dd>Tells the script not to geneate workgroup.pg_dump. Under normal operation, this option should not be passed. You might pass this option if the script is only being run to collect NFO files, or your organization does not allow workgroup.pg_dump to be provided.</dd>
 
-nopg and noupload are optional parameters
-- nopg will skip the pg-dump creation
-- noupload will skip uploading to Tableau
+ <dt><b>noupload</b></dt>
+ <dd>Tells the script not to upload the output file (workgroup.zip) to a Tableau Technical Support case. Only use this option if you know that *tsm maintenance send-logs* will not succeed due to infrastructure limitations.</dd>
+</dl>
 
 The script must be run as administrator to complete successfully.
 This can be done in one of two ways
