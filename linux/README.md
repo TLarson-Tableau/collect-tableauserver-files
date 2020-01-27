@@ -3,6 +3,7 @@
 [collect-tsfiles.sh](https://github.com/TLarson-Tableau/collect-tableauserver-files/blob/master/linux/collect-tsfiles.sh) will create a pg-only backup of Tableau Server as workgroup.tsbak. workgroup.tsbak is then renamed to workgroup.zip where workgroup.yml, servers.txt, and hostname.nfo files are added to the archive. If the "noupload" option is NOT provided and both case_number and email_address are provided and Tableau Server can create an outbound connection to https://report-issue.tableau.com/, then workgroup.zip will be automatically uploaded to the Tableau Technical Support Case.
 
 ## Prerequisites:
+- template.nfo
 - Linux Server
 - Tableau Server 2018.2 or later
 - Case Number and email address (for file upload)
