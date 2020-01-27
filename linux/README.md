@@ -43,7 +43,7 @@ source collect-tsfiles.sh [-c case_number] [-e email_address] [-o options]
 
 **Example**
 ```
-source collect-tsfiles.sh -c 1234567 -e user@domain.com -o nopg noupload
+source collect-tsfiles.sh -c 12345678 -e user@domain.com -o nopg noupload
 ```
 
 ## Interactive Mode:
