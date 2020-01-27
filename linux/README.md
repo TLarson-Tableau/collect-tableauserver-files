@@ -9,26 +9,42 @@
 - Outbound connection to https://report-issue.tableau.com/ (for file upload)
 
 ## Usage:
-```
-source collect-tsfiles.sh [-c case_number] [-e email_address] [-o options]
-```
+Copy both collect-tsfiles.sh and template.nfo to a location on the TSM Controller node of your Tableau Server cluster--this the initial node unless it was moved at some point. The location you copy these files to will be a staging ground for the NFO files that are created; these are typically small, about 5k in size.
+
+Run collect-tsfiles.sh with source and any desired/required parameters.
+
 **[source](https://bash.cyberciti.biz/guide/Source_command)**\
  The script must be sourced with either "source" or "." in order to run properly\
  Sourcing causes the script to run in the current shell rather than a new one\
  Running in the context of the current shell is necessary to access the shell variable $install_dir
 
-**-c case_number**\
-&nbsp;&nbsp;&nbsp;&nbsp;8-digit Tableau Technical Support case number--needed for file upload
+```
+source collect-tsfiles.sh [-c case_number] [-e email_address] [-o options]
+```
 
-**-e email_address**\
-&nbsp;&nbsp;&nbsp;&nbsp;needed for file upload
+<dl>
+ <dt><b>case_number</b></dt>
+ <dd>8-digit Tableau Technical Support case number--needed for file upload</dd>
+ 
+ <dt><b>email_address</b></dt>
+ <dd>needed for file upload</dd>
 
-**-o options**\
-&nbsp;&nbsp;&nbsp;&nbsp;**nopg**\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tells the script not to geneate workgroup.pg_dump
+<dl>
+ <dt><b>options</b></dt>
+ <dd>
+  <dl>
+   <dt><b>nopg</b></dt>
+   <dd>Tells the script not to geneate workgroup.pg_dump. Under normal operation, this option should not be passed. You might pass this option if the script is only being run to collect NFO files, or your organization does not allow workgroup.pg_dump to be provided.</dd>
+   <dt><b>noupload</b></dt>
+   <dd>Tells the script not to upload the output file (workgroup.zip) to a Tableau Technical Support case. Only use this option if you know that *tsm maintenance send-logs* will not succeed due to infrastructure limitations.</dd>
+  </dl>
+ </dd>
+</dl>
 
-&nbsp;&nbsp;&nbsp;&nbsp;**noupload**\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tells the script not to upload the output file (workgroup.zip) to a Tableau Technical Support case
+**Example**
+```
+source collect-tsfiles.sh -c 1234567 -e user@domain.com -o nopg noupload
+```
 
 ## Interactive Mode:
 
