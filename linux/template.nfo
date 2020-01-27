@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<MsInfo>
+<Metadata>
+<Version>8.0</Version>
+<CreationUTC>%%Created%%</CreationUTC>
+</Metadata>
+<Category name="System Summary">
+<Data>
+<Item><![CDATA[OS Name]]></Item>
+<Value><![CDATA[%%OS_Name%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Version]]></Item>
+<Value><![CDATA[%%Version%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Other OS Description]]></Item>
+<Value><![CDATA[%%Other_OS%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[OS Manufacturer]]></Item>
+<Value><![CDATA[%%OS_Manufacturer%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[System Name]]></Item>
+<Value><![CDATA[%%System_Name%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[System Manufacturer]]></Item>
+<Value><![CDATA[%%System_Manufacturer%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[System Model]]></Item>
+<Value><![CDATA[%%System_Model%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[System Type]]></Item>
+<Value><![CDATA[%%System_Type%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[System SKU]]></Item>
+<Value><![CDATA[%%System_SKU%%]]></Value>
+</Data>
+%%Processors%%<Data>
+<Item><![CDATA[BIOS Version/Date]]></Item>
+<Value><![CDATA[%%BIOS_Info%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[SMBIOS Version]]></Item>
+<Value><![CDATA[%%SMBIOS_Version%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[BIOS Mode]]></Item>
+<Value><![CDATA[%%BIOS_Mode%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[BaseBoard Manufacturer]]></Item>
+<Value><![CDATA[%%BaseBoard_Manufacturer%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[BaseBoard Model]]></Item>
+<Value><![CDATA[%%BaseBoard_Model%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[BaseBoard Name]]></Item>
+<Value><![CDATA[%%BaseBoard_Name%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Platform Role]]></Item>
+<Value><![CDATA[%%Platform_Role%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Secure Boot State]]></Item>
+<Value><![CDATA[%%Secure_Boot%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[PCR7 Configuration]]></Item>
+<Value><![CDATA[%%PCR7_Configuration%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Boot Device]]></Item>
+<Value><![CDATA[%%Boot_Device%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Locale]]></Item>
+<Value><![CDATA[%%Locale%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Hardware Abstraction Layer]]></Item>
+<Value><![CDATA[Version = "%%Abstraction_Layer%%"]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[User Name]]></Item>
+<Value><![CDATA[%%User_Name%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Time Zone]]></Item>
+<Value><![CDATA[%%Time_Zone%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Installed Physical Memory (RAM)]]></Item>
+<Value><![CDATA[%%Installed_RAM%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Total Physical Memory]]></Item>
+<Value><![CDATA[%%Total_RAM%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Available Physical Memory]]></Item>
+<Value><![CDATA[%%Available_RAM%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Total Virtual Memory]]></Item>
+<Value><![CDATA[%%Total_VRAM%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Available Virtual Memory]]></Item>
+<Value><![CDATA[%%Available_VRAM%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Page File Space]]></Item>
+<Value><![CDATA[%%Page_File_Space%%]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Page File]]></Item>
+<Value><![CDATA[%%Page_File%%]]></Value>
+</Data>
+<Category name="Components">
+<Category name="Storage">
+<Category name="Drives">
+%%Drives%%</Category>
+</Category>
+</Category>
+</Category>
+</MsInfo>
