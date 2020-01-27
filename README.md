@@ -24,5 +24,5 @@ The linux script collects the same system info a builds its own NFO file, which 
 There are two different scripts, one each for Windows and Linux. The output from both is the same, a workgroup.zip file which contains the above files.
 
 ### More Info
-- [Windows](https://github.com/TLarson-Tableau/collect-tableauserver-files/tree/master/windows)
-- [Linux](https://github.com/TLarson-Tableau/collect-tableauserver-files/tree/master/linux)
+- Windows - [collect-tsfiles.bat](https://github.com/TLarson-Tableau/collect-tableauserver-files/tree/master/windows)
+- Linux - [collect-tsfiles.sh](https://github.com/TLarson-Tableau/collect-tableauserver-files/tree/master/linux)
