@@ -20,6 +20,7 @@ collect-tsfiles.bat [nopg] [noupload]
  <dd>Tells the script not to upload the output file (workgroup.zip) to a Tableau Technical Support case. Only use this option if you know that *tsm maintenance send-logs* will not succeed due to infrastructure limitations.</dd>
 </dl>
 
+## Run as Administrator
 The script must be run as administrator to complete successfully.
 This can be done in one of two ways
   1. Right-click and run as administrator
