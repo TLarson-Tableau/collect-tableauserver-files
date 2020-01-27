@@ -291,7 +291,11 @@ function checkInput {
 #$(echo $(hostname -s) | tr '[:upper:]' '[:lower:]')
 function tolower {
 	echo $(echo $1 | tr '[:upper:]' '[:lower:]')
-}
+} # end function tolower
+
+function trim {
+	echo $(echo $1 | sed 's/^[[:space:]]*//')
+} #end function trim
 
 ######################
 ## End of functions ##
@@ -325,11 +329,11 @@ checkInput "$@"
 
 if [[ -z $case && ! $options =~ "noupload" ]]; then
 	read -p "Enter your 8-digit case number: " case
-	case=$(echo $case | sed 's/^[[:space:]]*//')
+	case=$(trim $case)
 	if ! [[ -z $case ]]; then
 		if [[ -z $email ]]; then
 			read -p "Enter your email address: " email
-			email=$(echo $email | sed 's/^[[:space:]]*//')
+			email=$(trim $email)
 		fi
 	fi	
 fi
@@ -341,8 +345,7 @@ fi
 # Since many of the Tableau Server directories include the version number, we have to determine 
 # Fortunately there are some GLOBAL and SHELL variables available that we can leverage for this
 
-#lowerlocalhost=$(tolower $(hostname -s))
-lowerlocalhost=$(echo $(hostname -s) | tr '[:upper:]' '[:lower:]')
+lowerlocalhost=$(tolower $(hostname -s))
 ymldir="$TABLEAU_SERVER_DATA_DIR/data/tabsvc/config/tabadmincontroller_0.$TABLEAU_SERVER_DATA_DIR_VERSION"
 bindir="$install_dir/packages/bin.$TABLEAU_SERVER_DATA_DIR_VERSION"
 backupdir="$(tsm configuration get -k basefilepath.backuprestore)"
@@ -350,43 +353,42 @@ backupfile="workgroup.tsbak"
 archivefile="workgroup.zip"
 serverlist="servers.txt"
 
-#tsm status -v | grep node > $serverlist
+tsm status -v | grep node > $serverlist
 
 # If this is a single-node Tableau Server installation, tsm status -v returns localhost in place of hostname
 # Update serverlist to include the local hostname rather than "localhost"
 sed -i "s/localhost/$(hostname)/g" $serverlist
 
 # Read through serverlist and generate NFO files 
+echo -e "\nGenerating NFO Files"
 declare -A nodes
 while read -r node host; do
 	read -d : node <<< $node
 
-	#lowerhost=$(tolower $(shortName $host))
-	lowerhost=$(echo $(shortName $host) | tr '[:upper:]' '[:lower:]')
+	lowerhost=$(tolower $(shortName $host))
 
 	if [[ $lowerhost == $lowerlocalhost ]]; then
-		echo Create NFO file for localhost
+		echo "Create NFO file for localhost"
 		createnfo $host > $host.nfo
 	else
-		echo Create NFO file for $host
-		echo Connecting to $host
+		echo "Create NFO file for $host"
+		echo "Connecting to $host"
 
 		cat template.nfo | ssh $remoteuser@$host "cat > template.nfo; $(declare -f createnfo); createnfo $host" > $host.nfo
 	fi
 done < "$serverlist"
 
 if ! [[ $options =~ "nopg" ]]; then
-#if ! [[ $nopg ]]; then
-	echo Create a pg-only backup
+	echo -e "\nCreate a pg-only backup"
 	tsm maintenance backup --pg-only --file $backupfile --request-timeout 26400
 	if [[ $? -ne 0 ]]; then
 		result="Backup failed. Please work with your TAM on another way to collect workgroup.pg_dump.\n"
 	else
 		# We don't need asset_keys.yml, backup.sql, or pg_backup_metadata.json, so remove from archive
-		echo Remove asset_keys.yml, backup.sql, or pg_backup_metadata.json from $backupfile
+		echo "\nRemove asset_keys.yml, backup.sql, or pg_backup_metadata.json from $backupfile"
 		"$bindir/7z" d -tzip "$backupdir/$backupfile" asset_keys.yml backup.sql pg_backup_metadata.json | grep archive
 
-		echo Rename $backupfile to $archivefile
+		echo "Rename $backupfile to $archivefile"
 		mv "$backupdir/$backupfile" "$backupdir/$archivefile"
 	fi
 else
@@ -394,16 +396,17 @@ else
 fi
 
 # Add workgroup.yml to archive
-echo Add workgroup.yml to $archivefile
+
+echo -e "\nAdd workgroup.yml to $archivefile"
 "$bindir/7z" a -tzip "$backupdir/$archivefile" "$ymldir/workgroup.yml" | grep archive
 
 # Add servers.txt and NFO files to archive, excluding template.nfo
-echo Add servers.text and NFO files to $archivefile
+echo -e "\nAdd servers.text and NFO files to $archivefile"
 "$bindir/7z" a -tzip "$backupdir/$archivefile" *.nfo servers.txt '-x!template.nfo' | grep archive
 
 if [[ ! $options =~ "noupload" && $case && $email ]]; then
-	echo Send $archivefile to case\: $case
-	#tsm maintenance send-logs -f "$backupdir/$archivefile" -c $case -e $email --request-timeout 26400
+	echo -e "\nSend $archivefile to case: $case"
+	tsm maintenance send-logs -f "$backupdir/$archivefile" -c $case -e $email --request-timeout 26400
 	if [[ $? -ne 0 ]]; then
 		result+="send-logs failed. Please work with your TAM to find another way to deliver the file.\n"
 	fi
@@ -411,5 +414,6 @@ else
 	result+="The \"noupload\" option was passed to the script. Please work with your TAM to find another way to deliver the file.\n"
 fi
 
-echo $result
+echo -e "$result"
+echo "Complete"
 )
