@@ -183,8 +183,6 @@ EXIT /B 0
 				%comspec% /c tsm login -u !user!
 			)
 
-			%comspec% /c tsm login -u !user! -p %password%
-
 			:: If tsm login was NOT successful, undefine username
 			IF !ERRORLEVEL! NEQ 0 (
 				SET "user="
