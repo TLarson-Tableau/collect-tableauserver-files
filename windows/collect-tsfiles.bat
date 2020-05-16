@@ -21,22 +21,31 @@ SETLOCAL ENABLEEXTENSIONS
 :: tsm maintenace send-logs is used to upload the resulting archive file (workgroup.zip) to a Tableau Technical Support Case
 :: If send-logs is not successful, a prompt is displayed notifying to upload to your TAM
 ::
-:: If you plan to run the script without prompts, e.g. as a scheduled task
+:: Only change this section if you plan to run the script without prompts, e.g. as a scheduled task
 :: Uncomment the following SET lines by deleting the "::" and setting values for case and email
-:: *Note: If you are on version 2019.2 or earlier, you will will need to include username/password
+:: *Note: If you are on version 2019.2 or earlier, you will need to set both user and password
 :: Please double-check your case number, it should be an 8 digit number
-		::SET "silent=Y"
-		::SET "case=12345678"
-		::SET "email=name@domain.com"
-		::SET "user=username"
-		::SET password="Your not so secret password."
+	::SET "silent=Y"
+	::SET "case=12345678"
+	::SET "email=name@domain.com"
+	::SET "user=username"
+	::SET password="Your not so secret password."
 
-SET "bindir=%TABLEAU_SERVER_DATA_DIR%\packages\bin.%TABLEAU_SERVER_DATA_DIR_VERSION%"
+SET "bindir=%TABLEAU_SERVER_INSTALL_DIR%\packages\bin.%TABLEAU_SERVER_DATA_DIR_VERSION%"
 SET "configdir=%TABLEAU_SERVER_DATA_DIR%\data\tabsvc\config\tabadmincontroller_0.%TABLEAU_SERVER_DATA_DIR_VERSION%"
 SET "stagingdir=%temp%\staging"
 SET "scriptdir=%~dp0"
-SET "backupfile=workgroup.tsbak"
-SET "archivefile=workgroup.zip"
+SET "sys32=%windir%\System32"
+
+FOR /F "usebackq tokens=1,2 delims=,=- " %%G in (`CALL "%sys32%\wbem\wmic" OS GET LocalDateTime /value`) DO (
+	@IF %%G==LocalDateTime (SET "localdatetime=%%H")
+)
+
+SET "datestamp=%localdatetime:~0,8%_%localdatetime:~8,6%"
+
+SET "backupfile=workgroup_%datestamp%.tsbak"
+SET "archivefile=workgroup_%datestamp%.zip"
+
 
 :: Check if "nopg" or "noupload" was passed to the script
 CALL :checkparam %1 %2
@@ -59,10 +68,9 @@ CALL :checkparam %1 %2
 			ECHO leave the case number blank and just hit the enter key.
 			IF NOT DEFINED case (SET /P "case=Enter your 8 digit case number: ")
 			IF DEFINED case (
-				SET "case=%case: =%"
-				
+				SET "case=!case: =!"
 				IF NOT DEFINED email (SET /P "email=Enter your email address: ")
-				IF DEFINED email (SET "email=%email: =%")
+				IF DEFINED email (SET "email=!email: =!")
 			)
 		)
 	)
@@ -85,31 +93,40 @@ CALL :checkparam %1 %2
 
 	IF NOT "%nopg%"=="Y" (
 	:: Create a pg-only backup
-		ECHO Creating pg-only backup
-		CALL :checkforbackupfile %backupfile%
+		ECHO %date% %time% - Creating pg-only backup
 		CALL tsm maintenance backup --pg-only -f %backupfile%
+		Echo.
+		ECHO %date% %time% - pg-only backup complete
 
-		:: remove asset_keys.yml and backup.sql from archivefile (workgroup.zip)
+	:: Change file extension of backupfile from tsbak to zip
 		ECHO.
-		ECHO Removing unneeded files from %backupfile%
-		CALL "%bindir%\7z" d -tzip "%backupdir%\%backupfile%" asset_keys.yml backup.sql | FIND "ing archive"
+		ECHO %date% %time% - Renaming !backupfile! to !archivefile!
+		RENAME "%backupdir%\%backupfile%" "%archivefile%"
 
-		:: Change file extension of backupfile from tsbak to zip
+	:: remove asset_keys.yml and backup.sql from archivefile (workgroup.zip)
 		ECHO.
-		ECHO Renaming %backupfile% to %archivefile%
-		MOVE "%backupdir%\%backupfile%" "%backupdir%\%archivefile%"
+		ECHO %date% %time% - Removing unneeded files from !archivefile!
+		CALL "%bindir%\7z" d -tzip "%backupdir%\%archivefile%" asset_keys.yml backup.sql | "%sys32%\FIND" "ing archive"
 	)
 
 :: get workgroup.yml
 	ECHO.
-	ECHO Staging workgroup.yml
+	ECHO %date% %time% - Staging workgroup.yml
 	COPY "%configdir%\workgroup.yml" .
 	ECHO.
 
 :: get NFO files
-	CALL tsm status -v | findstr /b node > servers.txt
+	ECHO %date% %time% - Generating NFO Files
 
-	ECHO Generating NFO Files
+	FOR /F "usebackq tokens=1,2 delims= " %%G IN (`CALL tsm status -v ^| "%sys32%\findstr" /b node`) DO (
+		SET "node=%%G"
+		SET "computer=%%H"
+		IF "!computer!"=="localhost" (
+			SET "computer=%COMPUTERNAME%"
+		)
+		ECHO !node! !computer! >> servers.txt
+	)
+
 	ECHO Found the following servers:
 	TYPE servers.txt
 	ECHO.
@@ -118,38 +135,47 @@ CALL :checkparam %1 %2
 	FOR /F "tokens=2 delims=: " %%G in (servers.txt) do (
 		:: Run msinfo32 remotely to each server and output servername.nfo
 		SET "computer=%%G"
-		IF !computer!==localhost (SET "computer=%COMPUTERNAME%")
-	  ECHO Generating !computer!.nfo
-	  %comspec% /c msinfo32 /computer !computer! /nfo !computer!.nfo
+		ECHO %date% %time% - Generating !computer!.nfo
+		%comspec% /c "%sys32%\msinfo32" /computer !computer! /nfo !computer!.nfo	
 	)
+
+	ECHO.
+	ECHO %date% %time% - NFO files complete
+
 
 :: Put staged files into archivefile (workgroup.zip)
 	ECHO.
-	CALL "%bindir%\7z" a -tzip -sdel "%backupdir%\%archivefile%" backups.txt servers.txt workgroup.yml *.nfo | FIND "ing archive"
+	ECHO %date% %time% - Add staged files to %archivefile%
+
+	CALL "%bindir%\7z" a -tzip -sdel "%backupdir%\%archivefile%" backups.txt servers.txt workgroup.yml *.nfo | "%sys32%\FIND" "ing archive"
 
 :: Use tsm maintenance send-logs to upload file
 :: If email or case are not set, set noupload to "Y"
-	IF "%email%" == "" (
-		SET "noupload=Y"
-	)
+	IF "!email!" == "" (SET "noupload=Y")
 
-	IF "%case%" == "" (
-		SET "noupload=Y"
-	)
-	
-	IF /I "%noupload%"=="Y" (
-		:: If "noupload" was passed to the script or set above then prompt user to upload manually
+	IF "!case!" == "" (SET "noupload=Y")
+
+	IF "!noupload!" == "Y" (
 		CALL :promptupload
 	) ELSE (
-		:: Otherwise, If noupload was not passed, and both email and case are set, then use send-logs to upload file
-		CALL tsm maintenance send-logs --email %email% --case %case% --file "%backupdir%\%archivefile%" --request-timeout 86400
-
-		:: If send-logs did not succeed, prompt user to upload files
-		IF %ERRORLEVEL% NEQ 0 (CALL :promptupload)
+		ECHO.
+		ECHO %date% %time% - Sending %archivefile% to Tableau Support case !case!
+		"%comspec%" /c tsm maintenance send-logs --email !email! --case !case! --file "%backupdir%\%archivefile%" --request-timeout 86400
+		IF "!ERRORLEVEL!" == "0" (
+			ECHO.
+			ECHO %date% %time% - File %archivefile% sent successfully
+		) ELSE (
+			ECHO.
+			ECHO %date% %time% - File %archivefile% did not send successfully
+			CALL :promptupload
+		)
 	)
 
+	ECHO.
+	ECHO %date% %time% - Script complete
+
 PAUSE
-EXIT /B 0
+EXIT /B
 ::End of Main
 
 
@@ -186,7 +212,7 @@ EXIT /B 0
 			:: If tsm login was NOT successful, undefine username
 			IF !ERRORLEVEL! NEQ 0 (
 				SET "user="
-				) ELSE (
+			) ELSE (
 				EXIT /B
 			)
 		)
@@ -194,30 +220,9 @@ EXIT /B 0
 	::End tsmlogin
 
 
-	::Function checkforbackupfile <filename> <index>
-		:checkforbackupfile
-		IF "%2"=="" (SET "test=%backupdir%\%1") ELSE (SET "test=%backupdir%\%~n1_%2.tsbak")
-		ECHO checking for !test!
-		IF EXIST "!test!" (
-			SET /A index = %2 + 1
-			CALL :checkforbackupfile %1 !index!
-		)
-		CALL :getfilename "!test!"
-		EXIT /B
-	::End checkforbackupfile
-
-
-	::Function getfilename
-		:getfilename
-		SET "backupfile=%~nx1"
-		SET "archivefile=%~n1.zip"
-		EXIT /B
-	::End getfilename
-
-
 	::Function promptupload
 		:promptupload
-		(ECHO Windows explorer should have opened to "%backupdir%" & ECHO. & ECHO Please upload %archivefile% to your TAM.) | MSG * /self 2>nul
+		(ECHO Windows explorer should have opened to "%backupdir%" & ECHO. & ECHO Please upload %archivefile% to your TAM.) | "%sys32%\MSG" * /self 2>nul
 		ECHO.
 		ECHO Please upload "%backupdir%\%archivefile%" to your TAM
 		"%WINDIR%\explorer" "%backupdir%"
