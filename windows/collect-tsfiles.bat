@@ -3,11 +3,12 @@ SETLOCAL EnableDelayedExpansion
 SETLOCAL ENABLEEXTENSIONS
 
 :: Usage
-:: collect-tsfiles.bat [param1] [param2]
-:: param1 and param2 allow you to alter certain functionality of the script
+:: collect-tsfiles.bat [param1] [param2] [param3]
+:: param1, param2, and param3 allow you to alter certain functionality of the script
 :: "nopg" will result in NOT collecting a pg_dump file
-:: "noupload" will result in NOT attempting to upload the resulting workgroup.zip directly to Tableau
-
+:: "noupload" will result in NOT attempting to upload the resulting files directly to Tableau
+:: "withlogs" will generate a ziplogs file with the default of 2-days
+::
 :: This script is for the collection of files needed for the Elite/Premium Support Deployment Review
 :: it may be used in other situations where the same informatoin is needed
 :: Files Collected: workgroup.pg_dump, workgroup.yml, msinfo32 output from each server in the cluster
@@ -16,9 +17,8 @@ SETLOCAL ENABLEEXTENSIONS
 :: To collect workgroup.pg_dump, a pg-only backup is taken as workgroup.tsbak
 :: msinfo32 is run from the command line to connect to each server in the cluster and generate the NFO file for each node
 ::
-:: Some files (workgroup.yml and NFO) are staged in a "staging" directory in the user's %TEMP% folder
-:: workgroup.tsbak is renamed to workgroup.zip and all staged files are copied in to the zip file before being deleted
-:: tsm maintenace send-logs is used to upload the resulting archive file (workgroup.zip) to a Tableau Technical Support Case
+:: Some files are staged in a "staging" directory in the user's %TEMP% folder
+:: tsm maintenace send-logs is used to upload the resulting files to a Tableau Technical Support Case
 :: If send-logs is not successful, a prompt is displayed notifying to upload to your TAM
 ::
 :: Only change this section if you plan to run the script without prompts, e.g. as a scheduled task
@@ -36,29 +36,54 @@ SET "configdir=%TABLEAU_SERVER_DATA_DIR%\data\tabsvc\config\tabadmincontroller_0
 SET "stagingdir=%temp%\staging"
 SET "scriptdir=%~dp0"
 SET "sys32=%windir%\System32"
+SET "uploadlist=%stagingdir%\uploadlist.txt"
 
-FOR /F "usebackq tokens=1,2 delims=,=- " %%G in (`CALL "%sys32%\wbem\wmic" OS GET LocalDateTime /value`) DO (
-	@IF %%G==LocalDateTime (SET "localdatetime=%%H")
-)
+:: Start with a clean stagingdir
+	DEL "%stagingdir%\workgroup.yml" > nul 2>&1
+	DEL "%stagingdir%\*.txt" > nul 2>&1
+	DEL "%stagingdir%\*.nfo" > nul 2>&1
 
-SET "datestamp=%localdatetime:~0,8%_%localdatetime:~8,6%"
+:: set datestamp
+	ECHO %date% %time% > "%stagingdir%\starttime.txt"
 
-SET "backupfile=workgroup_%datestamp%.tsbak"
-SET "archivefile=workgroup_%datestamp%.zip"
+	FOR /F "tokens=1-3 delims=. " %%G in (%stagingdir%\starttime.txt) do (
+		SET "ldate=%%H"
+		SET "ltime=%%I"
+	)
 
+	SET "ldate=%ldate:/=%"
+	SET "ltime=%ltime::=%"
 
-:: Check if "nopg" or "noupload" was passed to the script
-CALL :checkparam %1 %2
-	
+	SET "datestamp=!ldate!_!ltime!"
+
+:: set ouput filenames
+	SET "backupfile=workgroup_%datestamp%.tsbak"
+	SET "archivefile=workgroup_%datestamp%.zip"
+	SET "extrasfile=extras_%datestamp%.zip"
+	SET "ziplogsfile=ziplogs_%datestamp%.zip"
+
+:: Determine the Tableau ziplogs path
+	FOR /F "delims=" %%G in ('tsm configuration get -k basefilepath.log_archive') DO (SET "ziplogsdir=%%G")
+	:: Replace forward slashes / with back slashes \
+	SET "ziplogsdir=%ziplogsdir:/=\%"
+
+:: Determine the Tableau backup path
+	FOR /F "delims=" %%G in ('tsm configuration get -k basefilepath.backuprestore') DO (SET "backupdir=%%G")
+	:: Replace forward slashes / with back slashes \
+	SET "backupdir=%backupdir:/=\%"
+
+:: Check if "nopg", "noupload", or "withlogs" was passed to the script
+	CALL :checkparam %1 %2 %3
+
 :: If you are running the script in interactive mode (default), we'll prompt you for the values
 	IF NOT "%silent%"=="Y" (
 		IF NOT "%noupload%"=="Y" (
 			ECHO Before we begin, a Tableau Technical Support case number is needed 
-			ECHO for the output file "workgroup.zip" to be automatically uploaded.
+			ECHO for the output file^(s^) to be automatically uploaded.
 			ECHO.
 			ECHO If you do not already have a case, you can create one by visiting
 			ECHO the customer portal at: https://customer.tableausoftware.com/
-			SET /P "openbrowser=Go there now (Y/N)? "
+			SET /P "openbrowser=Go there now [Y/N]? "
 			IF /I "!openbrowser!"=="Y" (
 				START "" https://customer.tableausoftware.com/
 			)
@@ -78,46 +103,19 @@ CALL :checkparam %1 %2
 :: Now that we have all the variables set, let's go ahead and begin
 
 :: Set working directory to user's temp folder
-	IF NOT EXIST %stagingdir% (MKDIR %stagingdir%)
-	CD /D %stagingdir%
+	IF NOT EXIST "%stagingdir%" (MKDIR "%stagingdir%")
+	CD /D "%stagingdir%"
 
 :: Login to TSM
 	ECHO.
 	CALL :tsmlogin
 
-:: Determine the Tableau backup path
-	FOR /F "delims=" %%G in ('tsm configuration get -k basefilepath.backuprestore') DO (SET "backupdir=%%G")
-
-:: Replace forward slashes / with back slashes \
-	SET "backupdir=%backupdir:/=\%"
-
-	IF NOT "%nopg%"=="Y" (
-	:: Create a pg-only backup
-		ECHO %date% %time% - Creating pg-only backup
-		CALL tsm maintenance backup --pg-only -f %backupfile%
-		Echo.
-		ECHO %date% %time% - pg-only backup complete
-
-	:: Change file extension of backupfile from tsbak to zip
-		ECHO.
-		ECHO %date% %time% - Renaming !backupfile! to !archivefile!
-		RENAME "%backupdir%\%backupfile%" "%archivefile%"
-
-	:: remove asset_keys.yml and backup.sql from archivefile (workgroup.zip)
-		ECHO.
-		ECHO %date% %time% - Removing unneeded files from !archivefile!
-		CALL "%bindir%\7z" d -tzip "%backupdir%\%archivefile%" asset_keys.yml backup.sql | "%sys32%\FIND" "ing archive"
-	)
-
-:: get workgroup.yml
-	ECHO.
-	ECHO %date% %time% - Staging workgroup.yml
-	COPY "%configdir%\workgroup.yml" .
-	ECHO.
+:: get licenseinfo
+	%comspec% /c serveractutil -view > licinfo.txt
+	%comspec% /c atrdiag -product "Tableau Desktop" > td_atrdiag.txt
+	%comspec% /c atrdiag -product "Tableau Server" > ts_atrdiag.txt
 
 :: get NFO files
-	ECHO %date% %time% - Generating NFO Files
-
 	FOR /F "usebackq tokens=1,2 delims= " %%G IN (`CALL tsm status -v ^| "%sys32%\findstr" /b node`) DO (
 		SET "node=%%G"
 		SET "computer=%%H"
@@ -131,23 +129,53 @@ CALL :checkparam %1 %2
 	TYPE servers.txt
 	ECHO.
 
+	ECHO %date% %time% - Generating NFO Files
+	ECHO.
+
 :: For each line in servers.txt, trim to just the server name
 	FOR /F "tokens=2 delims=: " %%G in (servers.txt) do (
 		:: Run msinfo32 remotely to each server and output servername.nfo
 		SET "computer=%%G"
 		ECHO %date% %time% - Generating !computer!.nfo
-		%comspec% /c "%sys32%\msinfo32" /computer !computer! /nfo !computer!.nfo	
 	)
+		%comspec% /c "%sys32%\msinfo32" /computer !computer! /nfo !computer!.nfo	
 
 	ECHO.
 	ECHO %date% %time% - NFO files complete
 
 
-:: Put staged files into archivefile (workgroup.zip)
+:: Put files into extras.zip
 	ECHO.
-	ECHO %date% %time% - Add staged files to %archivefile%
+	ECHO %date% %time% - Add files to %extrasfile%
+	CALL powershell compress-archive -path '%configdir%\workgroup.yml','%stagingdir%\*.txt','%userprofile%\.tableau\tsm\tsm.log','%stagingdir%\*.nfo' -destinationpath '%ziplogsdir%\%extrasfile%'
+	DEL "%stagingdir%\*.nfo"
+	DEL "%stagingdir%\*.txt"
 
-	CALL "%bindir%\7z" a -tzip -sdel "%backupdir%\%archivefile%" backups.txt servers.txt workgroup.yml *.nfo | "%sys32%\FIND" "ing archive"
+	ECHO "%ziplogsdir%\%extrasfile%" > uploadlist.txt
+
+:: Should we create a pg_only backup?
+	IF NOT "%nopg%"=="Y" (
+	:: Create a pg-only backup
+		ECHO.
+		ECHO %date% %time% - Creating pg-only backup
+		CALL tsm maintenance backup --pg-only -f %backupfile%
+		ECHO.
+		ECHO %date% %time% - pg-only backup complete
+
+		ECHO "%backupdir%\%backupfile%" >> %uploadlist%
+	)
+
+:: Generate ziplogs
+	IF "!withlogs!" == "Y" (
+		ECHO.
+		ECHO %date% %time% - Generating ziplogs
+		CALL tsm maintenance ziplogs --with-msinfo -f "%ziplogsfile%"
+
+		ECHO.
+		ECHO %date% %time% - Ziplogs complete
+
+		ECHO "%ziplogsdir%\%ziplogsfile%" >> %uploadlist%
+	)
 
 :: Use tsm maintenance send-logs to upload file
 :: If email or case are not set, set noupload to "Y"
@@ -158,19 +186,10 @@ CALL :checkparam %1 %2
 	IF "!noupload!" == "Y" (
 		CALL :promptupload
 	) ELSE (
-		ECHO.
-		ECHO %date% %time% - Sending %archivefile% to Tableau Support case !case!
-		"%comspec%" /c tsm maintenance send-logs --email !email! --case !case! --file "%backupdir%\%archivefile%" --request-timeout 86400
-		IF "!ERRORLEVEL!" == "0" (
-			ECHO.
-			ECHO %date% %time% - File %archivefile% sent successfully
-		) ELSE (
-			ECHO.
-			ECHO %date% %time% - File %archivefile% did not send successfully
-			CALL :promptupload
-		)
+		CALL :uploadFiles
 	)
 
+	DEL "%stagingdir%\uploadlist.txt"
 	ECHO.
 	ECHO %date% %time% - Script complete
 
@@ -180,6 +199,25 @@ EXIT /B
 
 
 ::Functions defined here
+	
+	:: Function uploadFiles
+		:uploadFiles
+		FOR /F "delims=" %%G in (%uploadlist%) do (
+			ECHO.
+			ECHO %date% %time% - Sending %%G to Tableau Support case !case!
+			"%comspec%" /c tsm maintenance send-logs --email !email! --case !case! --file %%G --request-timeout 86400
+			IF "!ERRORLEVEL!" == "0" (
+				ECHO.
+				ECHO %date% %time% - File %%G sent successfully
+			) ELSE (
+				ECHO.
+				ECHO %date% %time% - File %%G did not send successfully
+				CALL :promptupload %%G
+			)
+ 		)
+ 		EXIT /B
+	::End uploadFiles
+
 
 	::Function tsmlogin
 		:tsmlogin
@@ -222,26 +260,39 @@ EXIT /B
 
 	::Function promptupload
 		:promptupload
-		(ECHO Windows explorer should have opened to "%backupdir%" & ECHO. & ECHO Please upload %archivefile% to your TAM.) | "%sys32%\MSG" * /self 2>nul
-		ECHO.
-		ECHO Please upload "%backupdir%\%archivefile%" to your TAM
-		"%WINDIR%\explorer" "%backupdir%"
+		IF [%1] == [] (
+			FOR /F "delims=" %%G in (%uploadlist%) do (
+				CALL :promptupload %%G
+			)
+		) ELSE (
+			SET filename=%1
+			FOR %%A in (!filename!) do (
+			    SET "folder=%%~dpA"
+			    SET "name=%%~nxA"
+
+				(ECHO Windows explorer should have opened to "%%folder%%" & ECHO. & ECHO Please upload "%%name%%" to your TAM.) | "%sys32%\MSG" * /self 2>nul
+				ECHO.
+				ECHO Please upload !filename! to your TAM
+				"%WINDIR%\explorer" /select,!filename!
+			)
+		)
 		EXIT /B
 	::End promptupload
 
 
 	::Function checkparam
 		:checkparam
-		IF NOT "%~1" == "" (
+		IF NOT [%~1] == [] (
 			IF /I "%~1" == "nopg" (
 				SET "nopg=Y"
-			) ELSE (
-				IF /I "%~1" == "noupload" (
+			) ELSE IF /I "%~1" == "noupload" (
 					SET "noupload=Y"
-				)
+			) ELSE IF /I "%~1" == "withlogs" (
+					SET "withlogs=Y"
 			)
-			IF NOT "%~2" == "" (
-				CALL :checkparam %2
+			IF NOT [%~2] == [] (
+				::SHIFT
+				CALL :checkparam %~2 %~3
 			)
 		)
 		EXIT /B
